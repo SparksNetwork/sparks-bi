@@ -1,9 +1,14 @@
-"use strict";
+'use strict';
 
-var _interopRequire = function (obj) { return obj && obj.__esModule ? obj["default"] : obj; };
+var _restler = require('restler');
 
-var rest = _interopRequire(require("restler"));
+var _restler2 = _interopRequireDefault(_restler);
 
-rest.get("http://localhost:8000/presence").on("complete", function (result) {
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+_restler2.default.get('http://localhost:8000/presence').on('complete', function (result) {
   return console.log(result);
 });
+
+// rest.get('http://localhost:8000/time/rolling')
+// .on('complete', result => console.log(result))

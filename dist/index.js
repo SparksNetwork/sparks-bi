@@ -1,5 +1,7 @@
 'use strict';
 
+var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
+
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
 
 var _restify = require('restify');
@@ -49,7 +51,7 @@ var slack = new _slackNode2.default(SLACK_API_TOKEN);
 var currentEntryFor = function currentEntryFor(apiToken) {
   return new Promise(function (resolve, reject) {
     return new _togglApi2.default({ apiToken: apiToken }).getCurrentTimeEntry(function (err, result) {
-      return resolve(err || result);
+      return resolve(err || _extends({ togglToken: apiToken }, result));
     });
   });
 };
@@ -87,10 +89,35 @@ var getTogglCurrent = function getTogglCurrent(_ref) {
   });
 };
 
+var inWorkspace = function inWorkspace(togglUser) {
+  return togglUser && String(togglUser.wid) === String(TOGGL_WORKSPACE_ID);
+};
+
+var buildPresenceRow = function buildPresenceRow(_ref2, sUsers, tUsers) {
+  var fullName = _ref2.fullName;
+  var slackUsername = _ref2.slackUsername;
+  var togglToken = _ref2.togglToken;
+
+  var sUser = sUsers.find(function (u) {
+    return u.name === slackUsername;
+  });
+
+  var tUser = tUsers.find(function (u) {
+    return u.togglToken === togglToken;
+  });
+
+  return {
+    fullName: fullName,
+    presence: sUser && sUser.presence || 'N/A',
+    duration: inWorkspace(tUser) && tUser.duration || 0,
+    description: inWorkspace(tUser) && tUser.description
+  };
+};
+
 var getSlackUsers = function getSlackUsers() {
   return new Promise(function (resolve, reject) {
     return slack.api('users.list', { presence: 1 }, function (err, response) {
-      return err ? reject(err) : resolve(response);
+      return err ? reject(err) : resolve(response.members);
     });
   });
 };
@@ -108,31 +135,79 @@ var getTeamMembers = function getTeamMembers() {
 };
 
 var respondPresence = function respondPresence(req, res, next) {
-  getSlackUsers().then(function (users) {
-    console.log('users', users.members.length);
-    console.log('first', users.members[0]);
-    return getTeamMembers().then(function (teamMembers) {
-      console.log('team members', teamMembers.length);
-      return Promise.all(teamMembers.map(function (tm) {
-        return getTogglCurrent(tm);
-      }));
-    }).then(function (membersAndTasks) {
-      return membersAndTasks.map(function (mt) {
-        var userPresence = users.members.find(function (u) {
-          return u.name === mt.slackUsername;
-        });
-        return _extends({}, mt, {
-          presence: userPresence && userPresence.presence
-        });
-      });
+  Promise.all([getTeamMembers(), getSlackUsers()]).then(function (_ref3) {
+    var _ref4 = _slicedToArray(_ref3, 2);
+
+    var members = _ref4[0];
+    var sUsers = _ref4[1];
+    return Promise.all(members.map(function (_ref5) {
+      var togglToken = _ref5.togglToken;
+      return togglToken && currentEntryFor(togglToken) || { togglToken: togglToken };
+    })).then(function (tUsers) {
+      return [members, sUsers, tUsers];
     });
-  }).then(function (infos) {
-    res.send(infos);
+  }).then(function (_ref6) {
+    var _ref7 = _slicedToArray(_ref6, 3);
+
+    var members = _ref7[0];
+    var sUsers = _ref7[1];
+    var tUsers = _ref7[2];
+    return members.map(function (m) {
+      return buildPresenceRow(m, sUsers, tUsers);
+    });
+  }).then(function (rows) {
+    res.send(rows);
     next();
   }).catch(function (err) {
     return console.log(err);
   });
+
+  // getSlackUsers()
+  // .then(users => {
+  //   return getTeamMembers().then(teamMembers => {
+  //     console.log('team members', teamMembers.length)
+  //     return Promise.all(teamMembers.map(tm => getTogglCurrent(tm)))
+  //   })
+  //   .then(membersAndTasks =>
+  //     membersAndTasks.map(mt => {
+  //       const userPresence = users.members.find(u => u.name === mt.slackUsername)
+  //       return {
+  //         ...mt,
+  //         presence: userPresence && userPresence.presence,
+  //       }
+  //     })
+  //   )
+  // })
+  // .then(infos => {
+  //   res.send(infos)
+  //   next()
+  // })
+  // .catch(err => console.log(err))
 };
+
+// const respondPresence = (req, res, next) => {
+//   getSlackUsers()
+//   .then(users => {
+//     return getTeamMembers().then(teamMembers => {
+//       console.log('team members', teamMembers.length)
+//       return Promise.all(teamMembers.map(tm => getTogglCurrent(tm)))
+//     })
+//     .then(membersAndTasks =>
+//       membersAndTasks.map(mt => {
+//         const userPresence = users.members.find(u => u.name === mt.slackUsername)
+//         return {
+//           ...mt,
+//           presence: userPresence && userPresence.presence,
+//         }
+//       })
+//     )
+//   })
+//   .then(infos => {
+//     res.send(infos)
+//     next()
+//   })
+//   .catch(err => console.log(err))
+// }
 
 var server = _restify2.default.createServer();
 
