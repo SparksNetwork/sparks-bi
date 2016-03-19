@@ -149,7 +149,7 @@ const respondTimeRolling = (req, res, next) => {
     members.map(m => buildTimeRow(m, totals))
   )
   .then(rows => {
-    res.send(rows)
+    res.send({members: rows})
     next()
   })
   .catch(err => console.log(err))
