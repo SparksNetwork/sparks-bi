@@ -5,6 +5,7 @@ import Slack from 'slack-node'
 import Toggl from 'toggl-api'
 
 const requiredVars = [
+  'PORT',
   'FIREBASE_HOST',
   'FIREBASE_TOKEN',
   'TOGGL_WORKSPACE_ID',
@@ -23,6 +24,7 @@ const cfg = {}
 requiredVars.forEach(v => cfg[v] = process.env[v].trim())
 
 const {
+  PORT,
   FIREBASE_HOST,
   FIREBASE_TOKEN,
   TOGGL_WORKSPACE_ID,
@@ -111,7 +113,7 @@ server.get('/presence', respondPresence)
 
 fb.authWithCustomToken(FIREBASE_TOKEN.trim(), (err,auth) => {
   if (err) { console.log('FB auth err:',err); process.exit() }
-  server.listen(8000, () =>
+  server.listen(PORT, () =>
     console.log('%s listening at %s', server.name, server.url)
   )
 })
