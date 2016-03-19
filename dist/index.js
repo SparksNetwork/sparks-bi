@@ -20,7 +20,7 @@ var _togglApi2 = _interopRequireDefault(_togglApi);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-var requiredVars = ['FIREBASE_HOST', 'FIREBASE_TOKEN', 'TOGGL_WORKSPACE_ID', 'TOGGL_API_TOKEN', 'SLACK_API_TOKEN'];
+var requiredVars = ['PORT', 'FIREBASE_HOST', 'FIREBASE_TOKEN', 'TOGGL_WORKSPACE_ID', 'TOGGL_API_TOKEN', 'SLACK_API_TOKEN'];
 
 requiredVars.filter(function (v) {
   return !process.env[v];
@@ -34,6 +34,7 @@ requiredVars.forEach(function (v) {
   return cfg[v] = process.env[v].trim();
 });
 
+var PORT = cfg.PORT;
 var FIREBASE_HOST = cfg.FIREBASE_HOST;
 var FIREBASE_TOKEN = cfg.FIREBASE_TOKEN;
 var TOGGL_WORKSPACE_ID = cfg.TOGGL_WORKSPACE_ID;
@@ -141,7 +142,7 @@ fb.authWithCustomToken(FIREBASE_TOKEN.trim(), function (err, auth) {
   if (err) {
     console.log('FB auth err:', err);process.exit();
   }
-  server.listen(8000, function () {
+  server.listen(PORT, function () {
     return console.log('%s listening at %s', server.name, server.url);
   });
 });
