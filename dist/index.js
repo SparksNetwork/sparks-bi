@@ -107,6 +107,21 @@ var buildPresenceRow = function buildPresenceRow(_ref, sUsers, tUsers) {
   };
 };
 
+var buildTimeRow = function buildTimeRow(_ref2, totals) {
+  var initials = _ref2.initials;
+  var togglUid = _ref2.togglUid;
+
+  var details = totals.find(function (_ref3) {
+    var uid = _ref3.uid;
+    return uid === togglUid;
+  });
+  console.log('details', details);
+  return {
+    initials: initials,
+    totals: details && details.totals.slice(0, -1)
+  };
+};
+
 var getSlackUsers = function getSlackUsers() {
   return new Promise(function (resolve, reject) {
     return slack.api('users.list', { presence: 1 }, function (err, response) {
@@ -128,25 +143,53 @@ var getTeamMembers = function getTeamMembers() {
 };
 
 var respondPresence = function respondPresence(req, res, next) {
-  Promise.all([getTeamMembers(), getSlackUsers()]).then(function (_ref2) {
-    var _ref3 = _slicedToArray(_ref2, 2);
+  Promise.all([getTeamMembers(), getSlackUsers()]).then(function (_ref4) {
+    var _ref5 = _slicedToArray(_ref4, 2);
 
-    var members = _ref3[0];
-    var sUsers = _ref3[1];
-    return Promise.all(members.map(function (_ref4) {
-      var togglToken = _ref4.togglToken;
+    var members = _ref5[0];
+    var sUsers = _ref5[1];
+    return Promise.all(members.map(function (_ref6) {
+      var togglToken = _ref6.togglToken;
       return togglToken && currentEntryFor(togglToken) || { togglToken: togglToken };
     })).then(function (tUsers) {
       return [members, sUsers, tUsers];
     });
-  }).then(function (_ref5) {
-    var _ref6 = _slicedToArray(_ref5, 3);
+  }).then(function (_ref7) {
+    var _ref8 = _slicedToArray(_ref7, 3);
 
-    var members = _ref6[0];
-    var sUsers = _ref6[1];
-    var tUsers = _ref6[2];
+    var members = _ref8[0];
+    var sUsers = _ref8[1];
+    var tUsers = _ref8[2];
     return members.map(function (m) {
       return buildPresenceRow(m, sUsers, tUsers);
+    });
+  }).then(function (rows) {
+    res.send(rows);
+    next();
+  }).catch(function (err) {
+    return console.log(err);
+  });
+};
+
+var getWeeklyTotals = function getWeeklyTotals() {
+  return new Promise(function (resolve, reject) {
+    return new _togglApi2.default({ apiToken: TOGGL_API_TOKEN }).weeklyReport({
+      workspace_id: TOGGL_WORKSPACE_ID,
+      grouping: 'users'
+    }, function (err, result) {
+      return resolve(err || result.data);
+    });
+  });
+};
+
+var respondTimeRolling = function respondTimeRolling(req, res, next) {
+  Promise.all([getTeamMembers(), getWeeklyTotals()]).then(function (_ref9) {
+    var _ref10 = _slicedToArray(_ref9, 2);
+
+    var members = _ref10[0];
+    var totals = _ref10[1];
+    return members.map(function (m) {
+      return buildTimeRow(m, totals);
     });
   }).then(function (rows) {
     res.send(rows);
@@ -159,6 +202,8 @@ var respondPresence = function respondPresence(req, res, next) {
 var server = _restify2.default.createServer();
 
 server.get('/presence', respondPresence);
+
+server.get('/time/pastSeven', respondTimeRolling);
 
 fb.authWithCustomToken(FIREBASE_TOKEN.trim(), function (err, auth) {
   if (err) {
