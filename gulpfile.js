@@ -25,7 +25,7 @@ gulp.task('default', ['watch'])
 gulp.task('test', ['buildTests'], function testTask() {
   return nodemon({
     script: 'test_dist/index.js',
-    watch: 'test',
+    watch: ['test', 'dist'],
     tasks: ['buildTests'],
   })
 })

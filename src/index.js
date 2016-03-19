@@ -85,6 +85,15 @@ const buildPresenceRow = ({fullName, slackUsername, togglToken}, sUsers, tUsers)
   }
 }
 
+const buildTimeRow = ({initials, togglUid}, totals) => {
+  const details = totals.find(({uid}) => uid === togglUid)
+  console.log('details',details)
+  return {
+    initials,
+    totals: details && details.totals.slice(0,-1),
+  }
+}
+
 const getSlackUsers = () =>
   new Promise((resolve,reject) =>
     slack.api('users.list', {presence: 1}, (err,response) =>
@@ -121,9 +130,36 @@ const respondPresence = (req, res, next) => {
   .catch(err => console.log(err))
 }
 
+const getWeeklyTotals = () =>
+  new Promise((resolve,reject) =>
+    (new Toggl({apiToken: TOGGL_API_TOKEN}))
+    .weeklyReport({
+      workspace_id: TOGGL_WORKSPACE_ID,
+      grouping: 'users',
+    }, (err,result) =>
+      resolve(err || result.data)
+    )
+  )
+
+const respondTimeRolling = (req, res, next) => {
+  Promise.all([
+    getTeamMembers(), getWeeklyTotals(),
+  ])
+  .then(([members,totals]) =>
+    members.map(m => buildTimeRow(m, totals))
+  )
+  .then(rows => {
+    res.send(rows)
+    next()
+  })
+  .catch(err => console.log(err))
+}
+
 const server = restify.createServer()
 
 server.get('/presence', respondPresence)
+
+server.get('/time/pastSeven', respondTimeRolling)
 
 fb.authWithCustomToken(FIREBASE_TOKEN.trim(), (err,auth) => {
   if (err) { console.log('FB auth err:',err); process.exit() }

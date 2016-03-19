@@ -27,7 +27,7 @@ and then the rest is stored in the specified firebase --
 
 `/presence`
 
-`/time/rolling`
+`/time/pastSeven`
 
 `/time/week`
 
