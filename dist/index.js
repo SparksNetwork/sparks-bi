@@ -56,47 +56,40 @@ var currentEntryFor = function currentEntryFor(apiToken) {
   });
 };
 
-var getTogglCurrent = function getTogglCurrent(_ref) {
-  var fullName = _ref.fullName;
-  var initials = _ref.initials;
-  var togglToken = _ref.togglToken;
-  var slackUsername = _ref.slackUsername;
-
-  console.log('getting toggl for', togglToken);
-  if (!togglToken) {
-    return new Promise(function (resolve) {
-      return resolve({ fullName: fullName, initials: initials, slackUsername: slackUsername });
-    });
-  }
-  var toggl = new _togglApi2.default({ apiToken: togglToken });
-  return new Promise(function (resolve, reject) {
-    return toggl.getCurrentTimeEntry(function (err, result) {
-      console.log('toggl response:', err, result);
-      if (err) {
-        resolve({ fullName: fullName, initials: initials, slackUsername: slackUsername, err: err });
-      } else {
-        var response = { fullName: fullName, initials: initials, slackUsername: slackUsername };
-        if (result && String(result.wid) === String(TOGGL_WORKSPACE_ID)) {
-          response.start = result.start;
-          response.duration = result.duration;
-          response.description = result.description;
-        } else if (result) {
-          response.description = 'OTHER PROJECT';
-        }
-        resolve(response);
-      }
-    });
-  });
-};
+// const getTogglCurrent = ({fullName, initials, togglToken, slackUsername}) => {
+//   console.log('getting toggl for', togglToken)
+//   if (!togglToken) {
+//     return new Promise(resolve => resolve({fullName, initials, slackUsername}))
+//   }
+//   const toggl = new Toggl({apiToken: togglToken})
+//   return new Promise((resolve,reject) =>
+//     toggl.getCurrentTimeEntry((err,result) => {
+//       console.log('toggl response:', err, result)
+//       if (err) {
+//         resolve({fullName, initials, slackUsername, err})
+//       } else {
+//         const response = {fullName, initials, slackUsername}
+//         if (result && String(result.wid) === String(TOGGL_WORKSPACE_ID)) {
+//           response.start = result.start
+//           response.duration = result.duration
+//           response.description = result.description
+//         } else if (result) {
+//           response.description = 'OTHER PROJECT'
+//         }
+//         resolve(response)
+//       }
+//     })
+//   )
+// }
 
 var inWorkspace = function inWorkspace(togglUser) {
   return togglUser && String(togglUser.wid) === String(TOGGL_WORKSPACE_ID);
 };
 
-var buildPresenceRow = function buildPresenceRow(_ref2, sUsers, tUsers) {
-  var fullName = _ref2.fullName;
-  var slackUsername = _ref2.slackUsername;
-  var togglToken = _ref2.togglToken;
+var buildPresenceRow = function buildPresenceRow(_ref, sUsers, tUsers) {
+  var fullName = _ref.fullName;
+  var slackUsername = _ref.slackUsername;
+  var togglToken = _ref.togglToken;
 
   var sUser = sUsers.find(function (u) {
     return u.name === slackUsername;
@@ -135,23 +128,23 @@ var getTeamMembers = function getTeamMembers() {
 };
 
 var respondPresence = function respondPresence(req, res, next) {
-  Promise.all([getTeamMembers(), getSlackUsers()]).then(function (_ref3) {
-    var _ref4 = _slicedToArray(_ref3, 2);
+  Promise.all([getTeamMembers(), getSlackUsers()]).then(function (_ref2) {
+    var _ref3 = _slicedToArray(_ref2, 2);
 
-    var members = _ref4[0];
-    var sUsers = _ref4[1];
-    return Promise.all(members.map(function (_ref5) {
-      var togglToken = _ref5.togglToken;
+    var members = _ref3[0];
+    var sUsers = _ref3[1];
+    return Promise.all(members.map(function (_ref4) {
+      var togglToken = _ref4.togglToken;
       return togglToken && currentEntryFor(togglToken) || { togglToken: togglToken };
     })).then(function (tUsers) {
       return [members, sUsers, tUsers];
     });
-  }).then(function (_ref6) {
-    var _ref7 = _slicedToArray(_ref6, 3);
+  }).then(function (_ref5) {
+    var _ref6 = _slicedToArray(_ref5, 3);
 
-    var members = _ref7[0];
-    var sUsers = _ref7[1];
-    var tUsers = _ref7[2];
+    var members = _ref6[0];
+    var sUsers = _ref6[1];
+    var tUsers = _ref6[2];
     return members.map(function (m) {
       return buildPresenceRow(m, sUsers, tUsers);
     });
@@ -161,53 +154,7 @@ var respondPresence = function respondPresence(req, res, next) {
   }).catch(function (err) {
     return console.log(err);
   });
-
-  // getSlackUsers()
-  // .then(users => {
-  //   return getTeamMembers().then(teamMembers => {
-  //     console.log('team members', teamMembers.length)
-  //     return Promise.all(teamMembers.map(tm => getTogglCurrent(tm)))
-  //   })
-  //   .then(membersAndTasks =>
-  //     membersAndTasks.map(mt => {
-  //       const userPresence = users.members.find(u => u.name === mt.slackUsername)
-  //       return {
-  //         ...mt,
-  //         presence: userPresence && userPresence.presence,
-  //       }
-  //     })
-  //   )
-  // })
-  // .then(infos => {
-  //   res.send(infos)
-  //   next()
-  // })
-  // .catch(err => console.log(err))
 };
-
-// const respondPresence = (req, res, next) => {
-//   getSlackUsers()
-//   .then(users => {
-//     return getTeamMembers().then(teamMembers => {
-//       console.log('team members', teamMembers.length)
-//       return Promise.all(teamMembers.map(tm => getTogglCurrent(tm)))
-//     })
-//     .then(membersAndTasks =>
-//       membersAndTasks.map(mt => {
-//         const userPresence = users.members.find(u => u.name === mt.slackUsername)
-//         return {
-//           ...mt,
-//           presence: userPresence && userPresence.presence,
-//         }
-//       })
-//     )
-//   })
-//   .then(infos => {
-//     res.send(infos)
-//     next()
-//   })
-//   .catch(err => console.log(err))
-// }
 
 var server = _restify2.default.createServer();
 

@@ -43,31 +43,31 @@ const currentEntryFor = apiToken =>
     )
   )
 
-const getTogglCurrent = ({fullName, initials, togglToken, slackUsername}) => {
-  console.log('getting toggl for', togglToken)
-  if (!togglToken) {
-    return new Promise(resolve => resolve({fullName, initials, slackUsername}))
-  }
-  const toggl = new Toggl({apiToken: togglToken})
-  return new Promise((resolve,reject) =>
-    toggl.getCurrentTimeEntry((err,result) => {
-      console.log('toggl response:', err, result)
-      if (err) {
-        resolve({fullName, initials, slackUsername, err})
-      } else {
-        const response = {fullName, initials, slackUsername}
-        if (result && String(result.wid) === String(TOGGL_WORKSPACE_ID)) {
-          response.start = result.start
-          response.duration = result.duration
-          response.description = result.description
-        } else if (result) {
-          response.description = 'OTHER PROJECT'
-        }
-        resolve(response)
-      }
-    })
-  )
-}
+// const getTogglCurrent = ({fullName, initials, togglToken, slackUsername}) => {
+//   console.log('getting toggl for', togglToken)
+//   if (!togglToken) {
+//     return new Promise(resolve => resolve({fullName, initials, slackUsername}))
+//   }
+//   const toggl = new Toggl({apiToken: togglToken})
+//   return new Promise((resolve,reject) =>
+//     toggl.getCurrentTimeEntry((err,result) => {
+//       console.log('toggl response:', err, result)
+//       if (err) {
+//         resolve({fullName, initials, slackUsername, err})
+//       } else {
+//         const response = {fullName, initials, slackUsername}
+//         if (result && String(result.wid) === String(TOGGL_WORKSPACE_ID)) {
+//           response.start = result.start
+//           response.duration = result.duration
+//           response.description = result.description
+//         } else if (result) {
+//           response.description = 'OTHER PROJECT'
+//         }
+//         resolve(response)
+//       }
+//     })
+//   )
+// }
 
 const inWorkspace = togglUser =>
   togglUser && String(togglUser.wid) === String(TOGGL_WORKSPACE_ID)
@@ -119,53 +119,7 @@ const respondPresence = (req, res, next) => {
     next()
   })
   .catch(err => console.log(err))
-
-  // getSlackUsers()
-  // .then(users => {
-  //   return getTeamMembers().then(teamMembers => {
-  //     console.log('team members', teamMembers.length)
-  //     return Promise.all(teamMembers.map(tm => getTogglCurrent(tm)))
-  //   })
-  //   .then(membersAndTasks =>
-  //     membersAndTasks.map(mt => {
-  //       const userPresence = users.members.find(u => u.name === mt.slackUsername)
-  //       return {
-  //         ...mt,
-  //         presence: userPresence && userPresence.presence,
-  //       }
-  //     })
-  //   )
-  // })
-  // .then(infos => {
-  //   res.send(infos)
-  //   next()
-  // })
-  // .catch(err => console.log(err))
 }
-
-// const respondPresence = (req, res, next) => {
-//   getSlackUsers()
-//   .then(users => {
-//     return getTeamMembers().then(teamMembers => {
-//       console.log('team members', teamMembers.length)
-//       return Promise.all(teamMembers.map(tm => getTogglCurrent(tm)))
-//     })
-//     .then(membersAndTasks =>
-//       membersAndTasks.map(mt => {
-//         const userPresence = users.members.find(u => u.name === mt.slackUsername)
-//         return {
-//           ...mt,
-//           presence: userPresence && userPresence.presence,
-//         }
-//       })
-//     )
-//   })
-//   .then(infos => {
-//     res.send(infos)
-//     next()
-//   })
-//   .catch(err => console.log(err))
-// }
 
 const server = restify.createServer()
 
@@ -177,5 +131,3 @@ fb.authWithCustomToken(FIREBASE_TOKEN.trim(), (err,auth) => {
     console.log('%s listening at %s', server.name, server.url)
   )
 })
-
-
