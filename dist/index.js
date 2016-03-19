@@ -192,7 +192,7 @@ var respondTimeRolling = function respondTimeRolling(req, res, next) {
       return buildTimeRow(m, totals);
     });
   }).then(function (rows) {
-    res.send(rows);
+    res.send({ members: rows });
     next();
   }).catch(function (err) {
     return console.log(err);
