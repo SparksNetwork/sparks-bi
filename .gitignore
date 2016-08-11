@@ -83,3 +83,4 @@ $RECYCLE.BIN/
 .gulp-cache
 *.gulp-cache
 .gulp-cache
+.env

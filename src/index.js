@@ -3,14 +3,16 @@ import restify from 'restify'
 import Firebase from 'firebase'
 import Slack from 'slack-node'
 import Toggl from 'toggl-api'
+import {createBot} from './bot'
+import {map, trim, compose} from 'ramda'
 
 const requiredVars = [
   'PORT',
   'FIREBASE_HOST',
   'FIREBASE_TOKEN',
-  'TOGGL_WORKSPACE_ID',
-  'TOGGL_API_TOKEN',
-  'SLACK_API_TOKEN',
+  //'TOGGL_WORKSPACE_ID',
+  //'TOGGL_API_TOKEN',
+  //'SLACK_API_TOKEN',
 ]
 
 requiredVars
@@ -20,8 +22,10 @@ requiredVars
   process.exit()
 })
 
-const cfg = {}
-requiredVars.forEach(v => cfg[v] = process.env[v].trim())
+const cfg = map(
+  compose(trim, String),
+  process.env
+)
 
 const {
   PORT,
@@ -34,7 +38,10 @@ const {
 
 const fb = new Firebase(FIREBASE_HOST)
 
-const slack = new Slack(SLACK_API_TOKEN)
+const isTogglEnabled = () => TOGGL_WORKSPACE_ID && TOGGL_API_TOKEN
+const isSlackEnabled = () => SLACK_API_TOKEN
+
+const slack = isSlackEnabled() && new Slack(SLACK_API_TOKEN)
 
 const currentEntryFor = apiToken =>
   new Promise((resolve,reject) =>
@@ -42,32 +49,6 @@ const currentEntryFor = apiToken =>
       resolve(err || {togglToken: apiToken, ...result})
     )
   )
-
-// const getTogglCurrent = ({fullName, initials, togglToken, slackUsername}) => {
-//   console.log('getting toggl for', togglToken)
-//   if (!togglToken) {
-//     return new Promise(resolve => resolve({fullName, initials, slackUsername}))
-//   }
-//   const toggl = new Toggl({apiToken: togglToken})
-//   return new Promise((resolve,reject) =>
-//     toggl.getCurrentTimeEntry((err,result) => {
-//       console.log('toggl response:', err, result)
-//       if (err) {
-//         resolve({fullName, initials, slackUsername, err})
-//       } else {
-//         const response = {fullName, initials, slackUsername}
-//         if (result && String(result.wid) === String(TOGGL_WORKSPACE_ID)) {
-//           response.start = result.start
-//           response.duration = result.duration
-//           response.description = result.description
-//         } else if (result) {
-//           response.description = 'OTHER PROJECT'
-//         }
-//         resolve(response)
-//       }
-//     })
-//   )
-// }
 
 const inWorkspace = togglUser =>
   togglUser && String(togglUser.wid) === String(TOGGL_WORKSPACE_ID)
@@ -156,14 +137,27 @@ const respondTimeRolling = (req, res, next) => {
 }
 
 const server = restify.createServer()
+server.use(restify.bodyParser())
 
-server.get('/presence', respondPresence)
+if (isSlackEnabled()) {
+  server.get('/presence', respondPresence)
+}
 
-server.get('/time/pastSeven', respondTimeRolling)
+if (isTogglEnabled()) {
+  server.get('/time/pastSeven', respondTimeRolling)
+}
 
 fb.authWithCustomToken(FIREBASE_TOKEN.trim(), (err,auth) => {
   if (err) { console.log('FB auth err:',err); process.exit() }
+
   server.listen(PORT, () =>
     console.log('%s listening at %s', server.name, server.url)
   )
+
+  const startBot = createBot(fb, server)
+
+  startBot(function(err, bot) {
+    if (err) { console.log('BOT error:', err); process.exit() }
+    console.log('Bot connected')
+  })
 })
