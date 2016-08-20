@@ -9,6 +9,8 @@
     "quotes": [2, "single"],
     "no-class/no-class": 0,
     "no-unused-vars": 0,
-    "max-len": 160
+    "max-len": [2, 160],
+    "func-names": 0,
+    "no-shadow": 0
   }
 }
