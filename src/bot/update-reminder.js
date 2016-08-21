@@ -92,7 +92,7 @@ export function UpdateReminder(controller, slack, options) {
   checkTimer()
 
   controller.hears([/.+/], ['ambient', 'message_received'], async function(bot, message) {
-    if (!message.channel === dailyUpdateChannel.id) { console.log('wrong channel'); return }
+    if (message.channel !== dailyUpdateChannel.id) { console.log('wrong channel'); return }
     if (!await inTeam(message.user)) { console.log('not in team'); return }
 
     const user = await storage.users.getAsync(message.user) || {id: message.user}
