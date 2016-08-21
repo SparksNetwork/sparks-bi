@@ -54,7 +54,7 @@ export function Greeter(controller, fb) {
       intentClassifier.retrain()
     })
 
-  controller.hears([/^classify (.+) in (.+) as (.+)$/], ['direct_message', 'mention'], function(bot, message) {
+  controller.hears([/^classify (.+) in (.+) as (.+)$/], ['direct_message', 'direct_mention'], function(bot, message) {
     const [, text, child, label] = message.match
 
     fb.child('botkitClassifier').child(child)

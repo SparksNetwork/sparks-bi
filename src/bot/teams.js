@@ -52,7 +52,7 @@ export function Teams(controller, slack) {
     slack.chat.postMessage(channelId, `You've been added to team ${teamId} and I'll message you team events.\n${listMessage}`, {as_user: true})
   }
 
-  controller.hears([/^add <@(.+)> to (.+) team/], ['direct_message', 'mention'], async function(bot, message) {
+  controller.hears([/^add <@(.+)> to (?:the )?(.+) team/], ['direct_message', 'direct_mention'], async function(bot, message) {
     const [,userId,teamId] = message.match.map(trim)
     await addUserToTeam(teamId, userId)
 
@@ -60,12 +60,12 @@ export function Teams(controller, slack) {
     bot.reply(message, `Added ${name} to ${teamId}`)
   })
 
-  controller.hears([/^add (?:myself|me) to (.+) team/], ['direct_message', 'mention'], async function(bot, message) {
+  controller.hears([/^add (?:myself|me) to (.+) team/], ['direct_message', 'direct_mention'], async function(bot, message) {
     const [,teamId] = message.match.map(trim)
     await addUserToTeam(teamId, message.user)
   })
 
-  controller.hears([/^(who is in|describe) (?:the )?(.+) team/], ['direct_message', 'mention'], async function(bot, message) {
+  controller.hears([/^(who is in|describe) (?:the )?(.+) team/], ['direct_message', 'direct_mention'], async function(bot, message) {
     const [,,teamId] = message.match.map(trim)
     const team = await storage.teams.getAsync(teamId)
 

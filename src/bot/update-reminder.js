@@ -108,8 +108,8 @@ export function UpdateReminder(controller, slack, options) {
     bot.reply(message, usersLastUpdateMessage(user))
   })
 
-  controller.hears([/^who.*updated/, /^show.*updates/], ['direct_message', 'mention'], async function(bot, message) {
-    if (message.event === 'mention' && message.channel !== dailyUpdateChannel.id) { return }
+  controller.hears([/^who.*updated/, /^show.*updates/], ['direct_message', 'direct_mention'], async function(bot, message) {
+    if (message.event === 'direct_mention' && message.channel !== dailyUpdateChannel.id) { return }
 
     const team = await getTeam()
     const users = await getTeamUsers()
