@@ -1,6 +1,7 @@
 import Promise from 'bluebird'
+import assert from 'assert'
 import {
-  compose, uniq, append, trim, path,
+  compose, uniq, append, trim, path, mergeAll, prop,
 } from 'ramda'
 
 function addToArray(item) {
@@ -14,8 +15,28 @@ function addToArray(item) {
 export function Teams(controller, slack) {
   const storage = controller.storage
 
-  controller.hears([/^add <@(.+)> to (.+) team/], ['direct_message', 'mention'], async function(bot, message) {
-    const [,userId,teamId] = message.match.map(trim)
+  async function getTeam(teamId) {
+    assert(teamId, 'No teamId')
+    return await storage.teams.getAsync(teamId)
+  }
+
+  async function getTeamUsers(teamId) {
+    const team = await getTeam(teamId)
+
+    return await Promise.all(team.users.map(id => Promise.all([
+      slack.users.info(id).then(prop('user')),
+      slack.users.getPresence(id),
+      storage.users.getAsync(id),
+    ]).then(mergeAll)))
+  }
+
+  async function listOfUsersMessage(teamId) {
+    const users = await getTeamUsers(teamId)
+    console.log(users)
+    return `The ${teamId} team has the users ${users.map(prop('name')).join(', ')}`
+  }
+
+  async function addUserToTeam(teamId, userId) {
     const team = await storage.teams.getAsync(teamId) || {id: teamId}
     const user = await storage.users.getAsync(userId) || {id: userId}
 
@@ -25,17 +46,31 @@ export function Teams(controller, slack) {
     await storage.teams.saveAsync(team)
     await storage.users.saveAsync(user)
 
+    const {channel: {id: channelId}} = await slack.im.open(userId)
+    const listMessage = await listOfUsersMessage(teamId)
+
+    slack.chat.postMessage(channelId, `You've been added to team ${teamId} and I'll message you team events.\n${listMessage}`, {as_user: true})
+  }
+
+  controller.hears([/^add <@(.+)> to (.+) team/], ['direct_message', 'mention'], async function(bot, message) {
+    const [,userId,teamId] = message.match.map(trim)
+    await addUserToTeam(teamId, userId)
+
     const {user: {name}} = await slack.users.info(userId)
     bot.reply(message, `Added ${name} to ${teamId}`)
   })
 
-  controller.hears([/^(who is in |describe (?:the )?)(.+) team/], ['direct_message', 'mention'], async function(bot, message) {
+  controller.hears([/^add (?:myself|me) to (.+) team/], ['direct_message', 'mention'], async function(bot, message) {
+    const [,teamId] = message.match.map(trim)
+    await addUserToTeam(teamId, message.user)
+  })
+
+  controller.hears([/^(who is in|describe) (?:the )?(.+) team/], ['direct_message', 'mention'], async function(bot, message) {
     const [,,teamId] = message.match.map(trim)
     const team = await storage.teams.getAsync(teamId)
 
     if (team) {
-      const users = await Promise.all(team.users.map(id => slack.users.info(id)))
-      bot.reply(message, `The ${teamId} team has the users ${users.map(path(['user', 'name'])).join(', ')}`)
+      bot.reply(message, await listOfUsersMessage(teamId))
     } else {
       bot.reply(message, `Cannot find a team named ${teamId}`)
     }

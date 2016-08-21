@@ -1,6 +1,6 @@
 import Promise from 'bluebird'
 import {
-  propEq, prop, mergeAll, contains, reject, allPass, filter, find, compose, trim,
+  propEq, prop, mergeAll, contains, reject, allPass, filter, find, compose, trim, not,
 } from 'ramda'
 import moment from 'moment'
 
@@ -23,14 +23,18 @@ export function UpdateReminder(controller, slack, options) {
     return await storage.teams.getAsync(options.team)
   }
 
+  async function getUser(userId) {
+    return await Promise.all([
+      slack.users.info(userId).then(prop('user')),
+      slack.users.getPresence(userId),
+      storage.users.getAsync(userId).then(u => u || {id: userId}),
+    ])
+    .then(mergeAll())
+  }
+
   async function getTeamUsers() {
     const team = await getTeam()
-
-    return await Promise.all(team.users.map(id => Promise.all([
-      slack.users.info(id).then(prop('user')),
-      slack.users.getPresence(id),
-      storage.users.getAsync(id),
-    ]).then(mergeAll)))
+    return await Promise.all(team.users.map(id => getUser(id)))
   }
 
   async function inTeam(userId) {
@@ -44,6 +48,15 @@ export function UpdateReminder(controller, slack, options) {
       .filter(prop('lastUpdateAt'))
       .filter(u =>
         moment(u.lastUpdateAt).isBefore(moment().add(-24, 'h')))
+  }
+
+  function usersLastUpdateMessage(user) {
+    if (user.lastUpdateAt) {
+      const m = moment(user.lastUpdateAt)
+      return `${user.name} last gave an update ${m.fromNow()}: ${user.lastUpdate}`
+    } else {
+      return `${user.name} has never given an update`
+    }
   }
 
   async function checkUpdates() {
@@ -91,30 +104,34 @@ export function UpdateReminder(controller, slack, options) {
 
   controller.hears([/^when .*<@(.+)>.*update/], ['direct_message'], async function(bot, message) {
     const [,userId] = message.match.map(trim)
-    const [user, {user: {name}}] = await Promise.all([
-      storage.users.getAsync(userId),
-      slack.users.info(userId),
-    ])
-
-    if (user && user.lastUpdateAt) {
-      const m = moment(user.lastUpdateAt)
-      bot.reply(message, `${name} last gave an update ${m.fromNow()}: ${user.lastUpdate}`)
-    } else {
-      bot.reply(message, `${name} has never given an update`)
-    }
+    const user = await getUser(userId)
+    bot.reply(message, usersLastUpdateMessage(user))
   })
 
-  controller.hears([/who updated/, /show updates/], ['direct_message'], async function(bot, message) {
-    console.log('who updated?')
+  controller.hears([/^who.*updated/, /^show.*updates/], ['direct_message', 'mention'], async function(bot, message) {
+    if (message.event === 'mention' && message.channel !== dailyUpdateChannel.id) { return }
+
     const team = await getTeam()
     const users = await getTeamUsers()
 
-    users
+    const updates = users
       .filter(prop('lastUpdateAt'))
       .filter(u => moment(u.lastUpdateAt).isAfter(moment().add(-24, 'h')))
-      .forEach(user => {
-        console.log(user)
-        bot.reply(message, `*${user.name}*: ${user.lastUpdate}`)
-      })
+      .map(user => `*${user.name}*: ${user.lastUpdate}`)
+
+    const notUpdated = users
+      .filter(u =>
+        not(u.lastUpdateAt && moment(u.lastUpdateAt).isAfter(moment().add(-24, 'h'))))
+      .map(usersLastUpdateMessage)
+
+    if (updates.length === 0) {
+      bot.reply(message, `Nobody has updated today!`)
+    } else {
+      bot.reply(message, updates.join(`\n`))
+    }
+
+    if (notUpdated.length > 0) {
+      bot.reply(message, notUpdated.join(`\n`))
+    }
   })
 }
