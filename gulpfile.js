@@ -41,7 +41,6 @@ gulp.task('buildTests', function buildTestsTask() {
 gulp.task('build', function buildTask() {
   return gulp.src('./src/**/*.js')
     .pipe(cache.filter())
-    .pipe(babel({presets:['es2015','stage-0']}))
     .pipe(cache.cache())
     .pipe(gulp.dest('./dist'))
 })
