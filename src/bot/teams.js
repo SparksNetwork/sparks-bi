@@ -1,7 +1,7 @@
 import Promise from 'bluebird'
 import assert from 'assert'
 import {
-  compose, uniq, append, trim, path, mergeAll, prop,
+  compose, uniq, append, trim, mergeAll, prop,
 } from 'ramda'
 
 function addToArray(item) {
@@ -12,8 +12,8 @@ function addToArray(item) {
   )
 }
 
-export function Teams(controller, slack) {
-  const storage = controller.storage
+export default function Teams(controller) {
+  const {storage, slack} = controller
 
   async function getTeam(teamId) {
     assert(teamId, 'No teamId')

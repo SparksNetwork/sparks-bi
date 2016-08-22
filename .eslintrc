@@ -11,6 +11,8 @@
     "no-unused-vars": 0,
     "max-len": [2, 160],
     "func-names": 0,
-    "no-shadow": 0
+    "no-shadow": 0,
+    "no-unused-expressions": 2,
+    "no-unused-vars": [2, {"vars": "all", "args": "after-used"}]
   }
 }

@@ -1,6 +1,6 @@
 import Promise from 'bluebird'
 import {
-  propEq, prop, mergeAll, contains, reject, allPass, filter, find, compose, trim, not,
+  propEq, prop, mergeAll, contains, reject, allPass, filter, compose, trim, not,
 } from 'ramda'
 import moment from 'moment'
 
@@ -10,10 +10,9 @@ const TEN_MINUTES = 1000 * 60 * 10
  * @param options.channel
  * @param options.team
  */
-export function UpdateReminder(controller, slack, options) {
-  const {storage} = controller
+export default function UpdateReminder(controller, options) {
+  const {slack, storage} = controller
   let dailyUpdateChannel
-  let users
 
   slack.channels.list().then(({channels}) =>
     dailyUpdateChannel = channels.find(propEq('name', options.channel))
@@ -111,7 +110,6 @@ export function UpdateReminder(controller, slack, options) {
   controller.hears([/^who.*updated/, /^show.*updates/], ['direct_message', 'direct_mention'], async function(bot, message) {
     if (message.event === 'direct_mention' && message.channel !== dailyUpdateChannel.id) { return }
 
-    const team = await getTeam()
     const users = await getTeamUsers()
 
     const updates = users

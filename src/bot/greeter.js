@@ -24,7 +24,9 @@ function randPhrase(phrases) {
   return phrases[idx]
 }
 
-export function Greeter(controller, fb) {
+export default function Greeter(controller) {
+  const {fb} = controller
+
   const TextClassifier = limdu.classifiers.multilabel.BinaryRelevance.bind(0, {
     binaryClassifierType: limdu.classifiers.Winnow.bind(0, {retrain_count: 10}),
   })
@@ -66,7 +68,7 @@ export function Greeter(controller, fb) {
   })
 
   controller.hears([/(good\s+)?morning[!.,]?\s*$/i], ['ambient', 'direct_message', 'message_received'], function(bot, message) {
-    const goodBad = function(text, label) {
+    const goodBad = function(text) {
       return function(response, convo) {
         const label = test(/good/, response.text) ? 'good' : 'bad'
         classifierRef.push({text, label})
@@ -84,7 +86,7 @@ export function Greeter(controller, fb) {
           const reply = randPhrase(label === 'good' ? POSITIVES : NEGATIVES)
           convo.say(reply)
         } else {
-          convo.ask('And is that good or bad?', goodBad(text, label))
+          convo.ask('And is that good or bad?', goodBad(text))
         }
 
         convo.next()

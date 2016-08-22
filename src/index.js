@@ -1,9 +1,8 @@
 import restify from 'restify'
 
 import Firebase from 'firebase'
-import Slack from 'slack-node'
-import Toggl from 'toggl-api'
 import {createBot} from './bot'
+import {createApi} from './api'
 import {map, trim, compose} from 'ramda'
 
 const requiredVars = [
@@ -31,133 +30,51 @@ const {
   PORT,
   FIREBASE_HOST,
   FIREBASE_TOKEN,
-  TOGGL_WORKSPACE_ID,
-  TOGGL_API_TOKEN,
-  SLACK_API_TOKEN,
 } = cfg
 
 const fb = new Firebase(FIREBASE_HOST)
 
-const isTogglEnabled = () => TOGGL_WORKSPACE_ID && TOGGL_API_TOKEN
-const isSlackEnabled = () => SLACK_API_TOKEN
-
-const slack = isSlackEnabled() && new Slack(SLACK_API_TOKEN)
-
-const currentEntryFor = apiToken =>
-  new Promise((resolve,reject) =>
-    (new Toggl({apiToken})).getCurrentTimeEntry((err,result) =>
-      resolve(err || {togglToken: apiToken, ...result})
-    )
-  )
-
-const inWorkspace = togglUser =>
-  togglUser && String(togglUser.wid) === String(TOGGL_WORKSPACE_ID)
-
-const buildPresenceRow = ({fullName, slackUsername, togglToken}, sUsers, tUsers) => {
-  const sUser = sUsers.find(u => u.name === slackUsername)
-
-  const tUser = tUsers.find(u => u.togglToken === togglToken)
-
-  return {
-    fullName,
-    presence: sUser && sUser.presence || 'N/A',
-    duration: inWorkspace(tUser) && tUser.duration || 0,
-    description: inWorkspace(tUser) && tUser.description,
-  }
-}
-
-const buildTimeRow = ({initials, togglUid}, totals) => {
-  const details = totals.find(({uid}) => uid === togglUid)
-  console.log('details',details)
-  return {
-    initials,
-    totals: details && details.totals.slice(0,-1),
-  }
-}
-
-const getSlackUsers = () =>
-  new Promise((resolve,reject) =>
-    slack.api('users.list', {presence: 1}, (err,response) =>
-      err ? reject(err) : resolve(response.members)
-    )
-  )
-
-const toRows = obj => Object.keys(obj).map(k => obj[k])
-
-const getTeamMembers = () =>
-  fb.child('teamMembers').once('value').then(snap => toRows(snap.val()))
-
-const respondPresence = (req, res, next) => {
-  Promise.all([
-    getTeamMembers(), getSlackUsers(),
-  ])
-  .then(([members,sUsers]) =>
-    Promise.all(members.map(({togglToken}) =>
-      togglToken && currentEntryFor(togglToken) || {togglToken}
-    ))
-    .then(tUsers => [
-      members,
-      sUsers,
-      tUsers,
-    ])
-  )
-  .then(([members, sUsers, tUsers]) =>
-    members.map(m => buildPresenceRow(m,sUsers,tUsers))
-  )
-  .then(rows => {
-    res.send(rows)
-    next()
-  })
-  .catch(err => console.log(err))
-}
-
-const getWeeklyTotals = () =>
-  new Promise((resolve,reject) =>
-    (new Toggl({apiToken: TOGGL_API_TOKEN}))
-    .weeklyReport({
-      workspace_id: TOGGL_WORKSPACE_ID,
-      grouping: 'users',
-    }, (err,result) =>
-      resolve(err || result.data)
-    )
-  )
-
-const respondTimeRolling = (req, res, next) => {
-  Promise.all([
-    getTeamMembers(), getWeeklyTotals(),
-  ])
-  .then(([members,totals]) =>
-    members.map(m => buildTimeRow(m, totals))
-  )
-  .then(rows => {
-    res.send({members: rows})
-    next()
-  })
-  .catch(err => console.log(err))
-}
-
 const server = restify.createServer()
 server.use(restify.bodyParser())
+createApi(cfg, fb, server)
 
-if (isSlackEnabled()) {
-  server.get('/presence', respondPresence)
-}
+const startBot = bot =>
+  bot.start()
+    .then(() => console.log('Bot connected'))
 
-if (isTogglEnabled()) {
-  server.get('/time/pastSeven', respondTimeRolling)
-}
-
-fb.authWithCustomToken(FIREBASE_TOKEN.trim(), (err,auth) => {
-  if (err) { console.log('FB auth err:',err); process.exit() }
-
-  server.listen(PORT, () =>
-    console.log('%s listening at %s', server.name, server.url)
+const startServer = server => new Promise((resolve, reject) =>
+  server.listen(PORT, err =>
+    err ? reject(err) : resolve(server)
   )
+)
 
-  const startBot = createBot(fb, server)
-
-  startBot(function(err, bot) {
-    if (err) { console.log('BOT error:', err); process.exit() }
-    console.log('Bot connected')
+const startFirebase = fb => new Promise((resolve, reject) =>
+  fb.authWithCustomToken(FIREBASE_TOKEN.trim(), (err, auth) => {
+    if (err) { reject(err) }
+    resolve(auth)
   })
+)
+
+startFirebase(fb).then(() => {
+  const bot = createBot(fb, server)
+  bot.use('greeter')
+  bot.use('teams')
+  bot.use('update-reminder', {
+    channel: 'daily-update',
+    team: 'dev',
+  })
+  bot.use('release')
+  bot.use('trello', {
+    board: 'P/Dev Pipeline',
+    lists: [
+      {name: 'BACKLOG - max 10 items, sized and agreed on', label: 'Backlog'},
+      {name: 'WORKING - max 2 per dev, must have an assigned person', label: 'Working'},
+      {name: 'REVIEW - max 5, if no face then you can add yourself', label: 'Review', alert: {team: 'dev', channel: 'z-dev'}},
+      {name: 'WAITING - max 5, reviewed, waiting to go to staging', label: 'Waiting'},
+    ],
+  })
+
+  return startServer(server)
+    .then(() => startBot(bot))
 })
+.catch(err => console.log('ERROR:', err) || process.exit())
