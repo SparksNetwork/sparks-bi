@@ -167,6 +167,10 @@ export default function Trello(controller, options) {
     convo.ask(message, assignConvo(memberId)(next, card))
   }
 
+  controller.describe({
+    name: 'What next',
+    examples: ['what should I work on?', 'What should I do now?'],
+  })
   controller.hears([/what (now|next)/i, /what should I work on/i, /what should I do/i], ['direct_message', 'direct_mention'], async function(bot, message) {
     bot.reply(message, 'Let me take a look for you')
     const memberId = await getTrelloMemberId(bot, message)

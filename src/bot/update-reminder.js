@@ -101,13 +101,21 @@ export default function UpdateReminder(controller, options) {
     console.log(`user ${user.id} last updated at ${user.lastUpdate}`)
   })
 
-  controller.hears([/^when .*<@(.+)>.*update/], ['direct_message'], async function(bot, message) {
+  controller.describe({
+    name: 'User update',
+    examples: ['When did @jeremy update?'],
+  })
+  controller.hears([/^when .*<@(.+)>.*update/i], ['direct_message'], async function(bot, message) {
     const [,userId] = message.match.map(trim)
     const user = await getUser(userId)
     bot.reply(message, usersLastUpdateMessage(user))
   })
 
-  controller.hears([/^who.*updated/, /^show.*updates/], ['direct_message', 'direct_mention'], async function(bot, message) {
+  controller.describe({
+    name: 'Todays updates',
+    examples: ['Who has updated?', 'Show me today\'s updates'],
+  })
+  controller.hears([/^who.*updated/i, /^show.*updates/i], ['direct_message', 'direct_mention'], async function(bot, message) {
     if (message.event === 'direct_mention' && message.channel !== dailyUpdateChannel.id) { return }
 
     const users = await getTeamUsers()

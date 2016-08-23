@@ -10,6 +10,7 @@
     "no-class/no-class": 0,
     "no-unused-vars": 0,
     "max-len": [2, 160],
+    "max-nested-callbacks": [2, 3],
     "func-names": 0,
     "no-shadow": 0,
     "no-unused-expressions": 2,

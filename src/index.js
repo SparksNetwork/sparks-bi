@@ -57,6 +57,7 @@ const startFirebase = fb => new Promise((resolve, reject) =>
 
 startFirebase(fb).then(() => {
   const bot = createBot(fb, server)
+  bot.use('help')
   bot.use('greeter')
   bot.use('teams')
   bot.use('update-reminder', {

@@ -56,6 +56,10 @@ export default function Greeter(controller) {
       intentClassifier.retrain()
     })
 
+  controller.describe({
+    name: 'Classify',
+    examples: ['classify I feel unwell in goodbad as bad', 'classify great in goodbad as good'],
+  })
   controller.hears([/^classify (.+) in (.+) as (.+)$/], ['direct_message', 'direct_mention'], function(bot, message) {
     const [, text, child, label] = message.match
 
@@ -67,6 +71,10 @@ export default function Greeter(controller) {
         bot.reply(message, `ERROR, ${err}`))
   })
 
+  controller.describe({
+    name: 'Greeting',
+    examples: ['good morning'],
+  })
   controller.hears([/(good\s+)?morning[!.,]?\s*$/i], ['ambient', 'direct_message', 'message_received'], function(bot, message) {
     const goodBad = function(text) {
       return function(response, convo) {

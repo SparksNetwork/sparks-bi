@@ -2,7 +2,7 @@ import Promise from 'bluebird'
 import Botkit from 'botkit'
 import {WebClient} from '@slack/client'
 import {createStorage} from './bot-store'
-import {keys, is, type} from 'ramda'
+import {keys, is, nth} from 'ramda'
 
 const slack = new WebClient(process.env.SLACK_TOKEN)
 
@@ -22,9 +22,27 @@ function createBot(fb, server) {
   controller.fb = fb
   controller.slack = slack
   controller.server = server
+  controller.commands = []
+
+  const hears = controller::controller.hears
+
+  let currentDescription
+  let currentPlugin
+
+  controller.describe = function(description) {
+    currentDescription = description
+  }
+  controller.hears = function(...rest) {
+    if (currentDescription) {
+      currentDescription.events = nth(-2, rest)
+      currentDescription.plugin = currentPlugin
+      controller.commands.push(currentDescription)
+    }
+    currentDescription = null
+    return hears(...rest)
+  }
 
   const plugins = []
-
   const startRTM = Promise.promisify(bot::bot.startRTM)
 
   async function start() {
@@ -37,12 +55,19 @@ function createBot(fb, server) {
     return bot
   }
 
-  function use(fnOrName, options) {
-    const fn = is(String, fnOrName) ?
-      require('./' + fnOrName).default :
-        fnOrName
-
+  function useFunction(fn, options) {
+    currentPlugin = options.name || fn.name
     return plugins.push(fn(controller, options))
+  }
+
+  function useRequire(name, options) {
+    useFunction(require('./' + name).default, {name, ...options})
+  }
+
+  function use(fnOrName, options) {
+    return is(String, fnOrName) ?
+      useRequire(fnOrName, options) :
+      useFunction(fnOrName, options)
   }
 
   return {
