@@ -2,6 +2,8 @@ import fs from 'fs'
 import rm from 'remove-markdown'
 import {trim, T, all, compose, props, complement} from 'ramda'
 
+const channel = process.env.RELEASE_CHANNEL
+
 export default function Release({server, slack}) {
   function readChangelogRelease(path) {
     return new Promise((resolve, reject) => {
@@ -57,7 +59,7 @@ export default function Release({server, slack}) {
       })
     }
 
-    slack.chat.postMessage('#z-dev', message, {as_user: true, attachments})
+    slack.chat.postMessage(channel, message, {as_user: true, attachments})
   }
 
   const validObject = properties => compose(
