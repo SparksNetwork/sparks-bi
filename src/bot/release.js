@@ -1,6 +1,6 @@
 import fs from 'fs'
 import rm from 'remove-markdown'
-import {trim, T} from 'ramda'
+import {trim, T, all, compose, props, complement} from 'ramda'
 
 export default function Release({server, slack}) {
   function readChangelogRelease(path) {
@@ -60,12 +60,19 @@ export default function Release({server, slack}) {
     slack.chat.postMessage('#z-dev', message, {as_user: true, attachments})
   }
 
+  const validObject = properties => compose(
+    all(Boolean),
+    props(properties)
+  )
+  const invalidObject = complement(validObject)
+
   /**
   * CircleCI will post to this route when a release happens
   *
   * TODO: Make this generic
   */
   server.post('/release', function(req, res, next) {
+    const details = req.body
     const changelog = req.files.changelog
 
     if (changelog) {
