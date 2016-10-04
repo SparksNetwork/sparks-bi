@@ -54,7 +54,7 @@ export default function Teams(controller) {
 
   controller.describe({
     name: 'Add to team',
-    examples: ['add jeremy to the dev team', 'add bob to accounts team'],
+    examples: ['add @jeremy to the dev team', 'add @bob to accounts team'],
   })
   controller.hears([/^add <@(.+)> to (?:the )?(.+) team/], ['direct_message', 'direct_mention'], async function(bot, message) {
     const [,userId,teamId] = message.match.map(trim)
