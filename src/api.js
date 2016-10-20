@@ -17,7 +17,7 @@ export function createApi(cfg, fb, server) {
   const inWorkspace = togglUser =>
     togglUser && String(togglUser.wid) === String(cfg.TOGGL_WORKSPACE_ID)
 
-  const buildPresenceRow = ({fullName, slackUsername, togglToken}, sUsers, tUsers) => {
+  const buildPresenceRow = ({fullName, slackUsername, togglToken, timezone}, sUsers, tUsers) => {
     const sUser = sUsers.find(u => u.name === slackUsername)
 
     const tUser = tUsers.find(u => u.togglToken === togglToken)
@@ -27,6 +27,7 @@ export function createApi(cfg, fb, server) {
       presence: sUser && sUser.presence || 'N/A',
       duration: inWorkspace(tUser) && tUser.duration || 0,
       description: inWorkspace(tUser) && tUser.description,
+      timezone,
     }
   }
 
