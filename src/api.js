@@ -22,7 +22,7 @@ export function createApi(cfg, fb, server) {
 
     const tUser = tUsers.find(u => u.togglToken === togglToken)
 
-    const localTime = (new Date()).toLocaleString('en', {timezone})
+    const localTime = (new Date()).toLocaleString('en', {timeZone: timezone})
 
     return {
       fullName,
