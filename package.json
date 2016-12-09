@@ -39,6 +39,7 @@
   },
   "dependencies": {
     "@slack/client": "^3.5.4",
+    "axios": "^0.15.3",
     "babel-cli": "^6.11.4",
     "babel-core": "^6.13.2",
     "babel-eslint": "^6.1.2",
@@ -73,6 +74,7 @@
     "restify": "^4.0.4",
     "restler": "^3.4.0",
     "slack-node": "^0.2.0",
-    "toggl-api": "0.0.4"
+    "toggl-api": "0.0.4",
+    "travis-ci": "^2.1.1"
   }
 }

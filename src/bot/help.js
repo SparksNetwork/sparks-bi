@@ -10,6 +10,7 @@ export default function Help(controller) {
     examples: ['help'],
   })
   controller.hears([/^help$/, /help\s*(.*)?/], ['direct_mention', 'direct_message'], async function(bot, message) {
+    console.log('sending help')
     bot.reply(message, 'Available commands:')
 
     controller.commands.forEach(command => {
