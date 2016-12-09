@@ -33,8 +33,6 @@ export default function Deploy(controller) {
 
     bot.reply(message, `Deploying ${branch} to ${stage}`)
 
-    const response = await client.post('/repo/SparksNetwork%2Fsparks-frontend/requests', {
-      data: JSON.stringify(body)
-    })
+    const response = await client.post('/repo/SparksNetwork%2Fsparks-frontend/requests', body)
   })
 }
