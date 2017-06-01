@@ -56,26 +56,26 @@ const startFirebase = fb => new Promise((resolve, reject) =>
 )
 
 startFirebase(fb).then(() => {
-  const bot = createBot(fb, server)
-  bot.use('help')
-  bot.use('greeter')
-  bot.use('teams')
-  bot.use('update-reminder', {
-    channel: 'daily-update',
-    team: 'dev',
-  })
-  bot.use('release')
-  bot.use('trello', {
-    board: 'P/Dev Pipeline',
-    lists: [
-      {name: 'BACKLOG - max 10 items, sized and agreed on', label: 'Backlog'},
-      {name: 'WORKING - max 2 per dev, must have an assigned person', label: 'Working'},
-      {name: 'REVIEW - max 5, if no face then you can add yourself', label: 'Review', alert: {team: 'dev', channel: 'z-dev'}},
-      {name: 'WAITING - max 5, reviewed, waiting to go to staging', label: 'Waiting'},
-    ],
-  })
+  // const bot = createBot(fb, server)
+  // bot.use('help')
+  // bot.use('greeter')
+  // bot.use('teams')
+  // bot.use('update-reminder', {
+  //   channel: 'daily-update',
+  //   team: 'dev',
+  // })
+  // bot.use('release')
+  // bot.use('trello', {
+  //   board: 'P/Dev Pipeline',
+  //   lists: [
+  //     {name: 'BACKLOG - max 10 items, sized and agreed on', label: 'Backlog'},
+  //     {name: 'WORKING - max 2 per dev, must have an assigned person', label: 'Working'},
+  //     {name: 'REVIEW - max 5, if no face then you can add yourself', label: 'Review', alert: {team: 'dev', channel: 'z-dev'}},
+  //     {name: 'WAITING - max 5, reviewed, waiting to go to staging', label: 'Waiting'},
+  //   ],
+  // })
 
   return startServer(server)
-    .then(() => startBot(bot))
+    // .then(() => startBot(bot))
 })
 .catch(err => console.log('ERROR:', err) || process.exit())
